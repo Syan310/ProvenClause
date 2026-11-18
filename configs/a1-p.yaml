@@ -1,0 +1,10 @@
+# A1 with DeepSeek V4 Pro: one Agent loop per checklist item, with tools, no verifier.
+# Stage 3 does not run it.
+name: A1-P
+method: A1
+agent_model: deepseek-v4-pro
+effort: high
+max_tokens: 32000              # per model call; a cut-off call is retried once with 2x (C6)
+max_steps: 8
+concurrency: 4
+max_review_output_tokens: 100000   # C4; the 5-contract run (2026-10-26) used at most 16,065

@@ -1,0 +1,9 @@
+# B0 with DeepSeek Flash: one call reviews the whole contract. Stage 1 runs it on dev.
+name: B0-F
+method: B0
+agent_model: deepseek-flash
+# DeepSeek's thinking effort is low, high or max (medium maps to high). Set it
+# explicitly so manifest.json records what the API uses.
+effort: high
+# Thinking tokens count toward max_tokens.
+max_tokens: 32000

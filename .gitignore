@@ -1,0 +1,18 @@
+# 数据集和评估结果不提交（见 README 的下载步骤）
+data/
+runs/
+
+# 密钥
+.env
+
+# 本地讲解文档，不提交（2026-10-23 决定）
+docs/讲解/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+*.db
+*.sqlite3
