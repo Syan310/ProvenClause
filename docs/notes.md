@@ -1,143 +1,143 @@
-# ProvenClause 笔记
+# ProvenClause notes
 
-阶段 0 的笔记：论文基线、数据统计、5 份 NDA 的阅读笔记。日期 2026-10-21。
+Stage 0 notes: paper baselines, data statistics, and reading notes on 5 NDAs. Date: 2026-10-21.
 
 ---
 
-## 1. 原论文的基线和评估设置
+## 1. Baselines and evaluation setup of the original paper
 
-**论文：** Koreeda & Manning, "ContractNLI: A Dataset for Document-level Natural Language Inference for Contracts", Findings of EMNLP 2021（arXiv 2110.01799）。数字来自论文 Table 4 和 Table 3。
+**Paper:** Koreeda & Manning, "ContractNLI: A Dataset for Document-level Natural Language Inference for Contracts", Findings of EMNLP 2021 (arXiv 2110.01799). The numbers come from Table 4 and Table 3 of the paper.
 
-### 1.1 基线数字（test 全集，123 份）
+### 1.1 Baseline numbers (full test set, 123 contracts)
 
-| 系统 | 准确率 | F1（相反） | F1（支持） | 证据 mAP |
+| System | Accuracy | F1 (Contradiction) | F1 (Entailment) | Evidence mAP |
 |---|---|---|---|---|
-| 多数类（每个检查问题输出最常见的结论） | .674 | .083 | .428 | — |
+| Majority class (outputs the most common finding for each checklist question) | .674 | .083 | .428 | — |
 | Doc TF-IDF + SVM | .733 | .197 | .641 | — |
 | Span NLI BERT-base | .838 | .287 | .765 | .885 |
 | **Span NLI BERT-large** | **.875** | **.357** | **.834** | **.922** |
-| DeBERTa v2 xlarge + CUAD 预训练（论文最好的结果） | .892 | .405 | .859 | .936 |
+| DeBERTa v2 xlarge + CUAD pretraining (best result in the paper) | .892 | .405 | .859 | .936 |
 
-详细设计第 8.1 节的"BERT-large 准确率约 87.5%、相反类 F1 约 0.36"已经核对，数字正确。
+Detailed design Section 8.1 says "BERT-large accuracy about 87.5%, Contradiction F1 about 0.36". We checked these numbers, and they are correct.
 
-### 1.2 评估设置：和我们的设置不同的 4 点
+### 1.2 Evaluation setup: 4 differences from our setup
 
-1. **平均方式。** 论文先在合同上做微平均，再在检查问题上做宏平均。
-   - 准确率：每个检查问题的条目数都相同，所以宏平均的准确率等于全部条目合在一起的准确率。两种算法结果一样。
-   - F1（相反）：两种算法结果不一样。论文对 17 个检查问题分别算 F1，再取平均。test 里有 7 个检查问题没有一条"相反"（nda-8、10、11、12、13、15、18），另有 4 个只有 1–4 条。没有"相反"时 F1 怎么算，论文没有说清楚。
-   - **2026-10-21 已决定：** 主表用合并计算；另算论文式宏平均，只用于和论文比较（见技术决策记录第 3.2 节）。
-2. **测试集不同。** 论文用 test 全集 123 份；我们的正式实验用 test-40。和论文比较时，要用 A2-F 在 test 全集上的补充结果。
-3. **结果是多次运行的平均。** 论文跑 10 组超参数，报告 dev 上最好的 3 个模型的平均值。
-4. **证据指标不同。** 论文的 mAP 和 P@R80 是排序指标，要求每个句子有一个分数。我们的系统输出一个句子集合，所以算精确率和召回率。两者不能直接比较。
+1. **Averaging method.** The paper first micro-averages over contracts, then macro-averages over checklist questions.
+   - Accuracy: each checklist question has the same number of items, so the macro-averaged accuracy is equal to the accuracy over all items together. The two methods give the same result.
+   - F1 (Contradiction): the two methods give different results. The paper calculates F1 for each of the 17 checklist questions, then takes the mean. In test, 7 checklist questions have no Contradiction item (nda-8, 10, 11, 12, 13, 15, 18), and 4 more have only 1–4 items. The paper does not say clearly how it calculates F1 when there is no Contradiction item.
+   - **Decided on 2026-10-21:** the main table uses the pooled calculation. We also calculate the paper-style macro-average, but only to compare with the paper (see Technical decisions Section 3.2).
+2. **Different test set.** The paper uses the full test set of 123 contracts. Our formal experiments use test-40. To compare with the paper, use the extra A2-F result on the full test set.
+3. **The results are averages of many runs.** The paper runs 10 hyperparameter settings and reports the mean of the 3 best models on dev.
+4. **Different evidence metrics.** The mAP and P@R80 of the paper are ranking metrics, and they need a score for each sentence. Our system outputs a set of sentences, so we calculate precision and recall. You cannot compare the two directly.
 
-### 1.3 其他有用的事实
+### 1.3 Other useful facts
 
-- **标注方式不同。** train 只核对了标注过的句子，没有通读全文。dev 大部分由主标注人一个人标注。test 大部分由主标注人通读全文补标。所以 train 的证据可能漏标较多。
-- **给出正确证据后，"相反"类的 F1 明显上升。** Table 6 只做"支持 / 相反"二分类：BERT-base 的 F1（相反）从 .490 升到 .657。这支持我们"先找对证据，再下结论"的设计。
-- **论文附录没有公开每个检查问题的标注说明。** 附录只列出了 17 个检查问题。所以 `nda_17.yaml` 的 `guidance` 是根据检查问题的原文和 train 里的证据例子写的。
-- **编号不同。** 论文 Table 10 的编号是 1–17，数据集的 ID 是 nda-1 到 nda-20（中间有空号）。nda-2 的名字在数据集里写成 "None-inclusion"，论文里写成 "Non-inclusion"。`nda_17.yaml` 照抄数据集。
+- **Different annotation methods.** For train, annotators checked only the annotated sentences and did not read the full text. For dev, the main annotator did most of the annotation alone. For test, the main annotator read most full texts and added missing labels. So train evidence can have more missing labels.
+- **With correct evidence, Contradiction F1 increases clearly.** Table 6 does only the Entailment / Contradiction binary classification: the F1 (Contradiction) of BERT-base increases from .490 to .657. This supports our design: "find the correct evidence first, then give the finding".
+- **The paper appendix does not publish the annotation guidelines for each checklist question.** The appendix lists only the 17 checklist questions. So we wrote the `guidance` in `nda_17.yaml` from the text of the checklist questions and the evidence examples in train.
+- **Different numbering.** Table 10 of the paper numbers the questions 1–17. The dataset IDs are nda-1 to nda-20 (some numbers are not used). The dataset spells the name of nda-2 as "None-inclusion", and the paper spells it "Non-inclusion". `nda_17.yaml` copies the dataset.
 
 ---
 
-## 2. 数据统计
+## 2. Data statistics
 
-命令：`uv run python -m provenclause.eval.stats`
+Command: `uv run python -m provenclause.eval.stats`
 
-| 划分 | 合同数 | 平均字符数 | 最长字符数 | 平均句子数 | 支持 | 相反 | 没提到 |
+| Split | Contracts | Mean characters | Max characters | Mean sentences | Entailment | Contradiction | NotMentioned |
 |---|---|---|---|---|---|---|---|
 | train | 423 | 11,049 | 54,571 | 77.8 | 3,530 | 841 | 2,820 |
 | dev | 61 | 12,095 | 32,359 | 83.6 | 519 | 95 | 423 |
 | test | 123 | 11,218 | 41,779 | 81.8 | 968 | 220 | 903 |
 | test-40 | 40 | 13,848 | 41,779 | 95.4 | 294 | 66 | 320 |
 
-**test-40 的偏差（种子 20261021）：**
-- test-40 的合同比 test 平均长 23%（13,848 对 11,218 个字符）。test 全集里最长的合同也在 test-40 里。所以正式实验的成本要按这个长度估算。
-- 40 份里有 14 份的长度在 test 的前 25%。随机抽样的期望值是 10 份。难例 H5（长合同）的样本会多一些。
-- 格式分布：search-pdf 27、sec-text 8、sec-html 5。test 全集的比例是 76 : 24 : 23。sec-html 偏少。
-- 结论分布：支持 43%、相反 9.7%、没提到 47%。test 全集是 46%、10.5%、43%。
-- 论文的划分按格式分层，我们的抽样没有分层。这些偏差在 README 里写明，不重新抽样。重新抽样等于看着 test 挑数据。
+**Bias of test-40 (seed 20261021):**
+- On average, test-40 contracts are 23% longer than test contracts (13,848 vs 11,218 characters). The longest contract in the full test set is also in test-40. So estimate the cost of the formal experiments from this length.
+- 14 of the 40 contracts are in the longest 25% of test. The expected value for a random sample is 10. So there are more samples for hard case H5 (long contracts).
+- Format distribution: search-pdf 27, sec-text 8, sec-html 5. The ratio in the full test set is 76 : 24 : 23. sec-html is under-represented.
+- Finding distribution: Entailment 43%, Contradiction 9.7%, NotMentioned 47%. The full test set has 46%, 10.5%, 43%.
+- The paper splits the data with stratification by format. Our sample has no stratification. We write these biases in the README and do not sample again. To sample again is to choose data while you look at test.
 
 ---
 
-## 3. 5 份 dev NDA 的阅读笔记
+## 3. Reading notes on 5 dev NDAs
 
-读的 5 份合同覆盖 3 种格式，长度从最短到最长：
+The 5 contracts cover 3 formats, and their lengths go from the shortest to the longest:
 
-| ID | 格式 | 字符数 | 句子数 |
+| ID | Format | Characters | Sentences |
 |---|---|---|---|
-| 456 | sec-text | 2,270（dev 最短） | 20 |
+| 456 | sec-text | 2,270 (shortest in dev) | 20 |
 | 411 | sec-text | 9,425 | 46 |
 | 3 | search-pdf | 11,142 | 97 |
 | 563 | sec-html | 13,208 | 80 |
-| 64 | search-pdf | 32,359（dev 最长） | 255 |
+| 64 | search-pdf | 32,359 (longest in dev) | 255 |
 
-### 3.1 章节编号
+### 3.1 Section numbering
 
-- **见到的写法：** `1.`–`22.`（5 份都有）；`A.`、`B.`；`(a)`、`(i)`、`(A)`、`(1)`；只有右括号的 `a)`、`1)`（合同 3）；没有编号的标题，例如 `WHEREAS`、`RECITALS:`、`General`。
-- **没见到：** `1.1`、`Article III`、罗马数字的顶级章节。阶段 2 的正则表达式仍要支持它们，但测试用例要从 train 里找。
-- **标题和正文的切分：**
-  - 单独一行的标题是一个独立的句子，例如 411 S9 `1. Non-Competition.`。
-  - 同一行的标题和正文在同一个句子里，例如 64 S44 `A. NO REPRESENTATION OR WARRANTIES: The Receiving Party agrees…`。
-  - 标题可能被切成 2 个句子，例如 64 S115–S116 `7. ENVIRONMENTAL` / `DOCUMENTATION AND ISSUES:`。
-- **列表的切分：** 每个列表项是一个句子。引导句是单独的句子。列表后面的半句话会接在最后一项里，例如 411 S12 `(b)` 里有整条竞业限制规则。
+- **Forms we saw:** `1.`–`22.` (all 5 contracts); `A.`, `B.`; `(a)`, `(i)`, `(A)`, `(1)`; `a)`, `1)` with only a right parenthesis (contract 3); headings with no number, for example `WHEREAS`, `RECITALS:`, `General`.
+- **Forms we did not see:** `1.1`, `Article III`, top-level sections with Roman numerals. The stage 2 regular expressions must still support them, but take the test cases from train.
+- **How headings and body text split:**
+  - A heading on its own line is a separate sentence, for example 411 S9 `1. Non-Competition.`.
+  - A heading and body text on the same line are in the same sentence, for example 64 S44 `A. NO REPRESENTATION OR WARRANTIES: The Receiving Party agrees…`.
+  - A heading can split into 2 sentences, for example 64 S115–S116 `7. ENVIRONMENTAL` / `DOCUMENTATION AND ISSUES:`.
+- **How lists split:** each list item is one sentence. The lead-in sentence is a separate sentence. A half sentence after the list joins the last item. For example, 411 S12 `(b)` contains the full non-compete rule.
 
-### 3.2 定义
+### 3.2 Definitions
 
-- **写法：** `"X" shall mean`、`"X" means`、`(the "Agreement")`、`(hereinafter referred to as the "Agreement")`、`(collectively, "Representatives")`、`is referred to as "Buyer"`、`is hereinafter collectively referred to as the "Information"`。
-- **反向定义：** `The term "Confidential Information" does not include`（411 S18）。这类句子是例外列表的开头，L2 要同时把它当成定义和例外。
-- **引号：** 有的合同用直引号，有的用弯引号，合同 64 两种都有。正则表达式必须同时匹配 `"` 和 `“”`。
-- **每份合同的定义数（人工数，误差约 ±2）：** 456 有 0 个，411 有 12 个，3 有 11 个，563 有 9 个，64 有 24 个。合同 456 的定义在另一页上，不在文本里。
-- **陷阱：** 563 S65 用了 "Receiving Party"，但合同只定义了 "Recipient"。`lookup_definition` 查不到时要返回"未定义"，不能报错。
+- **Forms:** `"X" shall mean`, `"X" means`, `(the "Agreement")`, `(hereinafter referred to as the "Agreement")`, `(collectively, "Representatives")`, `is referred to as "Buyer"`, `is hereinafter collectively referred to as the "Information"`.
+- **Negative definitions:** `The term "Confidential Information" does not include` (411 S18). This type of sentence starts an exception list. L2 must treat it as a definition and also as an exception.
+- **Quotation marks:** some contracts use straight quotes, some use curly quotes, and contract 64 uses both. The regular expression must match both `"` and the curly quotes (U+201C and U+201D).
+- **Number of definitions in each contract (counted by hand, error about ±2):** 456 has 0, 411 has 12, 3 has 11, 563 has 9, 64 has 24. The definitions of contract 456 are on a different page, not in the text.
+- **Trap:** 563 S65 uses "Receiving Party", but the contract defines only "Recipient". When `lookup_definition` finds nothing, it must return "not defined" and must not raise an error.
 
-### 3.3 交叉引用
+### 3.3 Cross-references
 
-- **能指回本合同章节的写法：** `this Section 1`、`Section 2(a) hereof`、`Except as provided in Section 3`、`Paragraph 4E`（数字和字母之间没有分隔符）、`Paragraph 6K above`。
-- **指向合同外面、不能解析的写法：**
-  - `Section 12 of the Securities Exchange Act of 1934`（411 S15）：法律条文。正则表达式会误匹配，要排除 `of the ... Act` 这类写法。
-  - `Section A of this Attachment A`（456 S2）：这一节不在文本里。
-  - `as that term is defined in the Merger Agreement`（411 S30）：另一份文件。
-- **没有编号的引用：** `the foregoing`、`the immediately preceding sentence`、`this paragraph`、`as provided above`、`hereof`。L2 不处理它们，只处理有编号的引用。
-- **没见到：** `clause 4.2`、`Article II`。
+- **Forms that point back to a section of the same contract:** `this Section 1`, `Section 2(a) hereof`, `Except as provided in Section 3`, `Paragraph 4E` (no separator between the number and the letter), `Paragraph 6K above`.
+- **Forms that point outside the contract and cannot be resolved:**
+  - `Section 12 of the Securities Exchange Act of 1934` (411 S15): a statute. The regular expression will match it by mistake, so exclude forms like `of the ... Act`.
+  - `Section A of this Attachment A` (456 S2): this section is not in the text.
+  - `as that term is defined in the Merger Agreement` (411 S30): a different document.
+- **References with no number:** `the foregoing`, `the immediately preceding sentence`, `this paragraph`, `as provided above`, `hereof`. L2 does not handle them. It handles only numbered references.
+- **Forms we did not see:** `clause 4.2`, `Article II`.
 
-### 3.4 例外条款
+### 3.4 Exception clauses
 
-- **详细设计列出的词：** `except`、`provided that` / `provided, however`、`unless`、`notwithstanding`、`other than` 都出现了。`save that` 没有出现。`subject to` 有时不是例外（3 S13、563 S65）。
-- **列表外的例外写法（建议阶段 2 讨论是否加入 L2）：**
-  - `shall not apply to`、`does not include`、`is not subject to the terms of this Agreement if`
-  - `Nothing contained in ... shall be deemed to prevent`、`However, this paragraph shall not prohibit`
-  - `without the prior written consent of`、`Absent ... prior written consent`
-  - `so long as`、`to the extent necessary`、`only if`
-- **例外的位置：**
-  - 短的例外和主规则在同一个句子里，例如 563 S23 `except Recipient's Representatives`。
-  - 排除列表在单独的章节里，每项一个句子，例如合同 3 的第 2 节 "Exclusions"（S26–S31）。
-  - 有的例外在下一个句子或下一个编号段落里，例如 411 S13–S15。所以 L2 要检查"同一章节的其他句子"，只检查证据句子本身不够。
+- **Words in the detailed design list:** `except`, `provided that` / `provided, however`, `unless`, `notwithstanding`, and `other than` all occur. `save that` does not occur. `subject to` is sometimes not an exception (3 S13, 563 S65).
+- **Exception forms not in the list (we suggest that stage 2 discusses whether to add them to L2):**
+  - `shall not apply to`, `does not include`, `is not subject to the terms of this Agreement if`
+  - `Nothing contained in ... shall be deemed to prevent`, `However, this paragraph shall not prohibit`
+  - `without the prior written consent of`, `Absent ... prior written consent`
+  - `so long as`, `to the extent necessary`, `only if`
+- **Where exceptions occur:**
+  - A short exception is in the same sentence as the main rule, for example 563 S23 `except Recipient's Representatives`.
+  - An exclusion list is in a separate section, with one sentence for each item, for example Section 2 "Exclusions" of contract 3 (S26–S31).
+  - Some exceptions are in the next sentence or the next numbered paragraph, for example 411 S13–S15. So L2 must check "the other sentences in the same section". It is not sufficient to check only the evidence sentences.
 
-### 3.5 文本提取的问题
+### 3.5 Text extraction problems
 
-- **dev 61 份里都没有：** 断行连字符（`employ-ees`）、连字（ﬁ）、句子里的换行、单独的页码行。没有被句子覆盖的文字只有换行符。
-- **有：**
-  - 多余的字母：64 S29 `SuchF information`、64 S80 `theF Indemnifying Party`。
-  - 填空用的下划线和省略号：64 S130–S241、3 S3。
-  - 页眉页脚混在正文里：456 S0 `(page 2.)`、563 S0 `Exhibit 99(d)(7)`、64 S242–S254。
-  - 句子从半句话开始：PDF 的换行变成了句子边界，例如 64 S4–S5 `This Commercial` / `CONFIDENTIALITY AND NON-DISCLOSURE AGREEMENT…`。所以章节识别不能假设每个句子都从句首开始。
+- **Not present in any of the 61 dev contracts:** line-break hyphens (`employ-ees`), ligatures (ﬁ), line breaks inside a sentence, separate page-number lines. The only text that no sentence covers is newline characters.
+- **Present:**
+  - Extra letters: 64 S29 `SuchF information`, 64 S80 `theF Indemnifying Party`.
+  - Underscores and ellipses for blanks to fill in: 64 S130–S241, 3 S3.
+  - Headers and footers mixed into the body text: 456 S0 `(page 2.)`, 563 S0 `Exhibit 99(d)(7)`, 64 S242–S254.
+  - Sentences that start in the middle: PDF line breaks became sentence boundaries, for example 64 S4–S5 `This Commercial` / `CONFIDENTIALITY AND NON-DISCLOSURE AGREEMENT…`. So section detection must not assume that each sentence starts at the start of a real sentence.
 
-### 3.6 "相反"的表达方式
+### 3.6 How Contradiction is expressed
 
-| 合同 | "相反"的检查项（证据句子） |
+| Contract | Contradiction checklist items (evidence sentences) |
 |---|---|
-| 456 | 无 |
-| 411 | nda-2 [17]、nda-5 [17]、nda-7 [17] |
+| 456 | None |
+| 411 | nda-2 [17], nda-5 [17], nda-7 [17] |
 | 3 | nda-2 [17] |
-| 563 | nda-1 [12, 13]、nda-2 [12–15] |
-| 64 | 无 |
+| 563 | nda-1 [12, 13], nda-2 [12–15] |
+| 64 | None |
 
-- **411 的 nda-5 和 nda-7（与员工、第三方共享）：** S17 说股东"不得向任何人透露"保密信息。合同里的例外只有定义的排除项（S18–S23）和法律强制披露（S25–S26），没有允许共享的例外。**这里的"相反"来自"没有例外"，而不是来自某个例外词。** L2 的关键词规则发现不了这种情况。
-- **nda-2（只包括技术信息）：** 定义里列出了商业信息，所以结论是"相反"。例如 3 S17：`"Confidential Information" shall mean scientific, research, technical or business information`。
+- **nda-5 and nda-7 of 411 (sharing with employees and with third parties):** S17 says that the shareholder "shall not disclose" the confidential information to any person. The only exceptions in the contract are the exclusions in the definition (S18–S23) and disclosure required by law (S25–S26). No exception permits sharing. **Here the Contradiction comes from "no exception", not from an exception word.** The keyword rules of L2 cannot find this case.
+- **nda-2 (includes only technical information):** the definition lists business information, so the finding is Contradiction. For example, 3 S17: `"Confidential Information" shall mean scientific, research, technical or business information`.
 
 ---
 
-## 4. 要你确认的事项
+## 4. Items for you to confirm
 
-1. **`risk_label_for_recipient` 是我选的。** 规则是：哪个结论对接收方更不利，就选哪个。例如 nda-1 选"相反"，因为不需要标记的信息也算保密信息，接收方要保护的范围更大。它只影响报告的排序，不影响打分。请看一遍 [`checklists/nda_17.yaml`](../checklists/nda_17.yaml)。
-2. **F1（相反）的算法**（第 1.2 节第 1 点）：2026-10-21 已决定。
-3. **L2 的例外词列表**（第 3.4 节）：在阶段 4 讨论。阶段 0 不改详细设计。
+1. **I chose `risk_label_for_recipient`.** The rule is: select the finding that is worse for the receiving party. For example, nda-1 selects Contradiction, because information with no marking is also confidential information, so the receiving party must protect a larger scope. It affects only the order of the report, not the scores. Please read [`checklists/nda_17.yaml`](../checklists/nda_17.yaml).
+2. **The F1 (Contradiction) calculation** (Section 1.2, point 1): decided on 2026-10-21.
+3. **The L2 exception word list** (Section 3.4): discuss it in stage 4. Stage 0 does not change the detailed design.

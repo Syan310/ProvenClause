@@ -1,12 +1,15 @@
-# 数据集和评估结果不提交（见 README 的下载步骤）
+# Datasets and evaluation results are not committed (see the download steps in README)
 data/
 runs/
 
-# 密钥
+# Secrets
 .env
 
-# 本地讲解文档，不提交（2026-10-23 决定）
-docs/讲解/
+# Local explainer docs, not committed (decided 2026-10-23)
+docs/explainers/
+
+# Local Claude Code skills and scratch files
+.claude/
 
 # Python
 __pycache__/
